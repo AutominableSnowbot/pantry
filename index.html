@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f97316" />
+  <title>My Pantry</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const initialPantry = [
+      { id: 1, name: "Chopped Tomatoes", qty: 1, unit: "390g box", category: "Canned & Boxed", used: false },
+      { id: 2, name: "Red Kidney Beans", qty: 1, unit: "390g box", category: "Canned & Boxed", used: false },
+      { id: 3, name: "Chickpeas", qty: 1, unit: "380g box", category: "Canned & Boxed", used: false },
+      { id: 4, name: "Coconut Milk (160ml)", qty: 1, unit: "carton", category: "Canned & Boxed", used: false },
+      { id: 5, name: "Coconut Milk (180ml)", qty: 4, unit: "cartons", category: "Canned & Boxed", used: false },
+      { id: 6, name: "Red Lentils", qty: 2, unit: "100g bags", category: "Grains & Legumes", used: false },
+      { id: 7, name: "Peanuts", qty: 1, unit: "small bag", category: "Grains & Legumes", used: false },
+      { id: 8, name: "Panko Breadcrumbs", qty: 1, unit: "50g bag", category: "Grains & Legumes", used: false },
+      { id: 9, name: "Chili Mild", qty: 2, unit: "sachets", category: "Spices & Seasonings", used: false },
+      { id: 10, name: "Vegetable Stock Powder", qty: 1, unit: "sachet", category: "Spices & Seasonings", used: false },
+      { id: 11, name: "Ginger Paste", qty: 2, unit: "10g sachets", category: "Spices & Seasonings", used: false },
+      { id: 12, name: "Curry Powder", qty: 1, unit: "sachet", category: "Spices & Seasonings", used: false },
+      { id: 13, name: "Mediterranean Spice Mix", qty: 1, unit: "sachet", category: "Spices & Seasonings", used: false },
+      { id: 14, name: "Paprika", qty: 1, unit: "sachet", category: "Spices & Seasonings", used: false },
+      { id: 15, name: "Vegetable Bouillon", qty: 1, unit: "sachet", category: "Spices & Seasonings", used: false },
+      { id: 16, name: "Salmon Spice Blend", qty: 2, unit: "sachets", category: "Spices & Seasonings", used: false },
+      { id: 17, name: "Soy Sauce", qty: 2, unit: "40ml sachets", category: "Sauces & Wet", used: false },
+      { id: 18, name: "Mayonnaise", qty: 1, unit: "50g sachet", category: "Sauces & Wet", used: false },
+      { id: 19, name: "Natural Yoghurt 4.2%", qty: 1, unit: "pouch", category: "Sauces & Wet", used: false },
+      { id: 20, name: "Tomato Paste", qty: 2, unit: "sachets", category: "Sauces & Wet", used: false },
+      { id: 21, name: "Honey or Mustard", qty: 1, unit: "20g sachet", category: "Sauces & Wet", used: false }
+    ];
+
+    const categoryIcons = {
+      "Canned & Boxed": "🥫",
+      "Grains & Legumes": "🌾",
+      "Spices & Seasonings": "🌶️",
+      "Sauces & Wet": "🧂",
+      "Fresh / Other": "🥬"
+    };
+
+    function Pantry() {
+      const [items, setItems] = useState(function() {
+        try {
+          const saved = localStorage.getItem("pantry-items");
+          return saved ? JSON.parse(saved) : initialPantry;
+        } catch (e) { return initialPantry; }
+      });
+      const [search, setSearch] = useState("");
+      const [hideEmpty, setHideEmpty] = useState(false);
+      const [showAdd, setShowAdd] = useState(false);
+      const [newItem, setNewItem] = useState({ name: "", qty: 1, unit: "", category: "Fresh / Other" });
+      const [importMessage, setImportMessage] = useState("");
+
+      useEffect(function() {
+        try { localStorage.setItem("pantry-items", JSON.stringify(items)); } catch (e) {}
+      }, [items]);
+
+      function adjustQty(id, delta) {
+        setItems(items.map(function(i) {
+          return i.id === id ? Object.assign({}, i, { qty: Math.max(0, i.qty + delta) }) : i;
+        }));
+      }
+
+      function toggleUsed(id) {
+        setItems(items.map(function(i) {
+          return i.id === id ? Object.assign({}, i, { used: !i.used }) : i;
+        }));
+      }
+
+      function removeItem(id) {
+        setItems(items.filter(function(i) { return i.id !== id; }));
+      }
+
+      function addItem() {
+        if (!newItem.name.trim()) return;
+        const ids = items.map(function(i) { return i.id; });
+        const nextId = ids.length ? Math.max.apply(null, ids) + 1 : 1;
+        setItems(items.concat([Object.assign({}, newItem, { id: nextId, used: false })]));
+        setNewItem({ name: "", qty: 1, unit: "", category: "Fresh / Other" });
+        setShowAdd(false);
+      }
+
+      function resetPantry() {
+        if (confirm("Reset to original contents?")) setItems(initialPantry);
+      }
+
+      function handleImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = JSON.parse(e.target.result);
+            const incoming = Array.isArray(data) ? data : data.items;
+            if (!Array.isArray(incoming)) {
+              setImportMessage("Invalid file format");
+              return;
+            }
+            let added = 0;
+            let merged = 0;
+            const list = items.slice();
+            const ids = list.map(function(i) { return i.id; });
+            let nextId = ids.length ? Math.max.apply(null, ids) + 1 : 1;
+            incoming.forEach(function(row) {
+              if (!row.name) return;
+              const existing = list.find(function(i) {
+                return i.name.toLowerCase().trim() === row.name.toLowerCase().trim();
+              });
+              if (existing) {
+                existing.qty = existing.qty + (row.qty || 1);
+                merged = merged + 1;
+              } else {
+                list.push({
+                  id: nextId,
+                  name: row.name,
+                  qty: row.qty || 1,
+                  unit: row.unit || "",
+                  category: row.category || "Fresh / Other",
+                  used: false
+                });
+                nextId = nextId + 1;
+                added = added + 1;
+              }
+            });
+            setItems(list);
+            setImportMessage("Imported: " + added + " new, " + merged + " merged");
+            setTimeout(function() { setImportMessage(""); }, 4000);
+          } catch (err) {
+            setImportMessage("Could not read file");
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+      }
+
+      const filtered = items.filter(function(item) {
+        if (hideEmpty && item.qty === 0) return false;
+        if (search && item.name.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
+        return true;
+      });
+
+      const cats = [];
+      filtered.forEach(function(i) { if (cats.indexOf(i.category) === -1) cats.push(i.category); });
+
+      const totalItems = items.filter(function(i) { return i.qty > 0; }).length;
+      const usedItems = items.filter(function(i) { return i.used; }).length;
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-4 pb-20">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-5 mb-4 border border-orange-200">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-orange-500 p-2 rounded-xl text-2xl">📦</div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">My Pantry</h1>
+                  <p className="text-sm text-gray-500">HelloFresh leftovers</p>
+                </div>
+              </div>
+              <div className="flex gap-3 text-sm">
+                <div className="bg-orange-100 px-3 py-1.5 rounded-lg text-orange-900 font-medium">
+                  {totalItems} in stock
+                </div>
+                <div className="bg-green-100 px-3 py-1.5 rounded-lg text-green-900 font-medium">
+                  {usedItems} used
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 border border-orange-100">
+              <input
+                type="text"
+                placeholder="Search ingredients..."
+                value={search}
+                onChange={function(e) { setSearch(e.target.value); }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg mb-2"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={function() { setHideEmpty(!hideEmpty); }}
+                  className={hideEmpty ? "flex-1 px-3 py-2 rounded-lg bg-orange-500 text-white font-medium text-sm" : "flex-1 px-3 py-2 rounded-lg bg-white text-gray-700 border border-gray-200 font-medium text-sm"}
+                >
+                  {hideEmpty ? "Hiding empty" : "Hide empty"}
+                </button>
+                <button
+                  onClick={function() { setShowAdd(!showAdd); }}
+                  className="flex-1 px-3 py-2 rounded-lg bg-orange-500 text-white font-medium text-sm"
+                >
+                  + Add
+                </button>
+                <label className="flex-1 px-3 py-2 rounded-lg bg-blue-500 text-white font-medium text-sm text-center">
+                  Import
+                  <input type="file" accept=".json,application/json" onChange={handleImport} style={{display:"none"}} />
+                </label>
+              </div>
+
+              {importMessage && (
+                <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900">
+                  {importMessage}
+                </div>
+              )}
+
+              {showAdd && (
+                <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200 space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={newItem.name}
+                    onChange={function(e) { setNewItem(Object.assign({}, newItem, { name: e.target.value })); }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Unit"
+                    value={newItem.unit}
+                    onChange={function(e) { setNewItem(Object.assign({}, newItem, { unit: e.target.value })); }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                  <select
+                    value={newItem.category}
+                    onChange={function(e) { setNewItem(Object.assign({}, newItem, { category: e.target.value })); }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                  >
+                    <option>Canned & Boxed</option>
+                    <option>Grains & Legumes</option>
+                    <option>Spices & Seasonings</option>
+                    <option>Sauces & Wet</option>
+                    <option>Fresh / Other</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={newItem.qty}
+                      onChange={function(e) { setNewItem(Object.assign({}, newItem, { qty: parseInt(e.target.value) || 1 })); }}
+                      className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <button
+                      onClick={addItem}
+                      className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {cats.map(function(category) {
+              const categoryItems = filtered.filter(function(i) { return i.category === category; });
+              if (categoryItems.length === 0) return null;
+              return (
+                <div key={category} className="mb-4">
+                  <h2 className="text-lg font-bold text-gray-800 mb-2 px-1 flex items-center gap-2">
+                    <span className="text-xl">{categoryIcons[category]}</span>
+                    {category}
+                    <span className="text-sm text-gray-400 font-normal">({categoryItems.length})</span>
+                  </h2>
+                  <div className="space-y-2">
+                    {categoryItems.map(function(item) {
+                      const dimmed = item.used || item.qty === 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className={dimmed ? "bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex items-center gap-3 opacity-50" : "bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex items-center gap-3"}
+                        >
+                          <button
+                            onClick={function() { toggleUsed(item.id); }}
+                            className={item.used ? "flex-shrink-0 w-7 h-7 rounded-full border-2 bg-green-500 border-green-500 text-white flex items-center justify-center" : "flex-shrink-0 w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center"}
+                          >
+                            {item.used ? "✓" : ""}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className={item.used ? "font-medium text-gray-900 line-through" : "font-medium text-gray-900"}>
+                              {item.name}
+                            </div>
+                            <div className="text-xs text-gray-500">{item.unit}</div>
+                          </div>
+                          <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+                            <button
+                              onClick={function() { adjustQty(item.id, -1); }}
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-gray-600 font-bold"
+                            >−</button>
+                            <span className="w-8 text-center font-bold text-gray-900">{item.qty}</span>
+                            <button
+                              onClick={function() { adjustQty(item.id, 1); }}
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-gray-600 font-bold"
+                            >+</button>
+                          </div>
+                          <button
+                            onClick={function() { removeItem(item.id); }}
+                            className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400"
+                          >🗑</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {filtered.length === 0 && (
+              <div className="bg-white rounded-2xl p-8 text-center text-gray-500 border border-dashed border-gray-300">
+                <div className="text-4xl mb-2">👨‍🍳</div>
+                <p>No ingredients match your filter</p>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-center">
+              <button onClick={resetPantry} className="text-sm text-gray-500 underline">
+                Reset to original contents
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Pantry />);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("sw.js").catch(function(err) { console.error(err); });
+      });
+    }
+  </script>
+</body>
+</html>
