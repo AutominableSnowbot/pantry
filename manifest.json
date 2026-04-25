@@ -1,11 +1,11 @@
 {
-  "name": "My Pantry",
-  "short_name": "Pantry",
-  "description": "Track what's in your pantry",
+  "name": "Spiskammer",
+  "short_name": "Spiskammer",
+  "description": "Stock and shopping list tracker",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#fff7ed",
-  "theme_color": "#f97316",
+  "background_color": "#fafaf9",
+  "theme_color": "#92400e",
   "orientation": "portrait",
   "icons": [
     {

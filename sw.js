@@ -1,4 +1,4 @@
-const CACHE = 'pantry-v4';
+const CACHE = 'spiskammer-v6';
 const ASSETS = [
   './',
   './index.html',
