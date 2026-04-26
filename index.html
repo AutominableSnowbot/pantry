@@ -52,7 +52,7 @@
       "Fresh / Other": "bg-green-50 text-green-900 border border-green-200"
     };
 
-    const AI_PROMPT = "You are an ingredient extraction assistant. Analyse the provided input (photo, screenshot, or text) and return a JSON array of food items suitable for a pantry tracker.\n\nRULES:\n- Output ONLY a valid JSON array. No markdown code fences, no commentary, no preamble, no trailing text.\n- Each item must have these exact fields: name, qty, unit, category.\n- Use double quotes, not single quotes.\n\nFIELD DEFINITIONS:\n- name: Short, clear English name (e.g. \"Red Kidney Beans\", not \"A can of red kidney beans\")\n- qty: Integer. Best guess from visual count or context. Default to 1.\n- unit: Short human description like \"390g box\", \"bunch\", \"whole\", \"100g bag\", \"sachet\". Empty string if unclear.\n- category: MUST be exactly one of:\n  - \"Canned & Boxed\" - tinned goods, cartons, boxed shelf-stable items\n  - \"Grains & Legumes\" - rice, pasta, lentils, beans (dried), flour, breadcrumbs, nuts\n  - \"Spices & Seasonings\" - spices, dried herbs, stock powder, seasoning sachets\n  - \"Sauces & Wet\" - oils, vinegars, soy sauce, mayo, yoghurt, tomato paste, honey\n  - \"Fresh / Other\" - fresh produce, meat, fish, fresh herbs, dairy, eggs, bread, anything else\n\nBEHAVIOUR:\n- Merge duplicates: three of the same item = one entry with qty: 3\n- If ambiguous, make your best guess and include it\n- If no recognisable food, return []\n\nEXAMPLE OUTPUT:\n[{\"name\":\"Chopped Tomatoes\",\"qty\":1,\"unit\":\"390g box\",\"category\":\"Canned & Boxed\"},{\"name\":\"Garlic\",\"qty\":2,\"unit\":\"bulbs\",\"category\":\"Fresh / Other\"}]";
+    const AI_PROMPT = "You are an item extraction assistant. Analyse the provided input (photo, screenshot, or text) and return a JSON array of items.\n\nRULES:\n- Output ONLY a valid JSON array. No markdown code fences, no commentary, no preamble, no trailing text.\n- Each item must have these exact fields: name, qty, unit, category.\n- Use double quotes, not single quotes.\n\nFIELD DEFINITIONS:\n- name: Short, clear English name (e.g. \"Red Kidney Beans\", not \"A can of red kidney beans\")\n- qty: Integer. Best guess from visual count or context. Default to 1.\n- unit: Short human description like \"390g box\", \"bunch\", \"whole\", \"pack\". Empty string if unclear.\n- category: Empty string \"\" for non-food items. For food items, MUST be one of:\n  - \"Canned & Boxed\" - tinned goods, cartons, boxed shelf-stable items\n  - \"Grains & Legumes\" - rice, pasta, lentils, beans (dried), flour, breadcrumbs, nuts\n  - \"Spices & Seasonings\" - spices, dried herbs, stock powder, seasoning sachets\n  - \"Sauces & Wet\" - oils, vinegars, soy sauce, mayo, yoghurt, tomato paste, honey\n  - \"Fresh / Other\" - fresh produce, meat, fish, fresh herbs, dairy, eggs, bread\n\nBEHAVIOUR:\n- Merge duplicates: three of the same item = one entry with qty: 3\n- If ambiguous, make your best guess and include it\n- If nothing recognisable, return []\n\nEXAMPLE FOR FOOD:\n[{\"name\":\"Chopped Tomatoes\",\"qty\":1,\"unit\":\"390g box\",\"category\":\"Canned & Boxed\"},{\"name\":\"Garlic\",\"qty\":2,\"unit\":\"bulbs\",\"category\":\"Fresh / Other\"}]\n\nEXAMPLE FOR NON-FOOD (e.g. IKEA, hardware):\n[{\"name\":\"Allen key set\",\"qty\":1,\"unit\":\"pack\",\"category\":\"\"},{\"name\":\"Picture hooks\",\"qty\":10,\"unit\":\"\",\"category\":\"\"}]";
 
     const WORD_NUMBERS = {
       "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
@@ -350,6 +350,8 @@
       const [showAdd, setShowAdd] = useState(false);
       const [newItem, setNewItem] = useState({ name: "", qty: 1, unit: "", category: "Fresh / Other" });
       const [importMessage, setImportMessage] = useState("");
+      const [showPaste, setShowPaste] = useState(false);
+      const [pasteText, setPasteText] = useState("");
 
       function adjustQty(id, delta) {
         setItems(items.map(function(i) {
@@ -461,53 +463,61 @@
         }
       }
 
+      function processPantryImport(rawText, sourceLabel) {
+        try {
+          const data = JSON.parse(rawText);
+          const incoming = Array.isArray(data) ? data : data.items;
+          if (!Array.isArray(incoming)) {
+            setImportMessage("Invalid format - expected JSON array");
+            setTimeout(function() { setImportMessage(""); }, 4000);
+            return false;
+          }
+          let added = 0;
+          let merged = 0;
+          const list = items.slice();
+          let id = nextId(list);
+          let newHistory = history.slice();
+          incoming.forEach(function(row) {
+            if (!row.name) return;
+            const existing = list.find(function(i) {
+              return i.name.toLowerCase().trim() === row.name.toLowerCase().trim();
+            });
+            if (existing) {
+              existing.qty = existing.qty + (row.qty || 1);
+              merged = merged + 1;
+            } else {
+              list.push({
+                id: id,
+                name: row.name,
+                qty: row.qty || 1,
+                unit: row.unit || "",
+                category: row.category || "Fresh / Other",
+                staple: false,
+                outOfStock: false
+              });
+              id = id + 1;
+              added = added + 1;
+            }
+            newHistory = recordHistory(newHistory, row.name, row.category, row.unit);
+          });
+          setItems(list);
+          setHistory(newHistory);
+          setImportMessage("Imported: " + added + " new, " + merged + " merged");
+          setTimeout(function() { setImportMessage(""); }, 4000);
+          return true;
+        } catch (err) {
+          setImportMessage("Could not parse - check the JSON is valid");
+          setTimeout(function() { setImportMessage(""); }, 4000);
+          return false;
+        }
+      }
+
       function handleImport(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-          try {
-            const data = JSON.parse(e.target.result);
-            const incoming = Array.isArray(data) ? data : data.items;
-            if (!Array.isArray(incoming)) {
-              setImportMessage("Invalid file format");
-              return;
-            }
-            let added = 0;
-            let merged = 0;
-            const list = items.slice();
-            let id = nextId(list);
-            let newHistory = history.slice();
-            incoming.forEach(function(row) {
-              if (!row.name) return;
-              const existing = list.find(function(i) {
-                return i.name.toLowerCase().trim() === row.name.toLowerCase().trim();
-              });
-              if (existing) {
-                existing.qty = existing.qty + (row.qty || 1);
-                merged = merged + 1;
-              } else {
-                list.push({
-                  id: id,
-                  name: row.name,
-                  qty: row.qty || 1,
-                  unit: row.unit || "",
-                  category: row.category || "Fresh / Other",
-                  staple: false,
-                  outOfStock: false
-                });
-                id = id + 1;
-                added = added + 1;
-              }
-              newHistory = recordHistory(newHistory, row.name, row.category, row.unit);
-            });
-            setItems(list);
-            setHistory(newHistory);
-            setImportMessage("Imported: " + added + " new, " + merged + " merged");
-            setTimeout(function() { setImportMessage(""); }, 4000);
-          } catch (err) {
-            setImportMessage("Could not read file");
-          }
+          processPantryImport(e.target.result, "file");
         };
         reader.readAsText(file);
         event.target.value = "";
@@ -560,6 +570,22 @@
                 Import
                 <input type="file" accept=".json,application/json" onChange={handleImport} style={{display:"none"}} />
               </label>
+            </div>
+
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={function() {
+                  setShowPaste(true);
+                  if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(function(text) {
+                      if (text) setPasteText(text);
+                    }).catch(function() {});
+                  }
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-stone-700 text-white font-medium text-sm"
+              >
+                📋 Paste JSON
+              </button>
             </div>
 
             {importMessage && (
@@ -737,6 +763,46 @@
               </button>
             </div>
           )}
+
+          {showPaste && (
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+              onClick={function() { setShowPaste(false); setPasteText(""); }}
+            >
+              <div
+                className="bg-white rounded-2xl w-full max-w-2xl p-4 space-y-3"
+                onClick={function(e) { e.stopPropagation(); }}
+              >
+                <div className="font-medium text-gray-900">Paste JSON</div>
+                <textarea
+                  value={pasteText}
+                  onChange={function(e) { setPasteText(e.target.value); }}
+                  placeholder='[{"name":"...","qty":1,"unit":"","category":""}]'
+                  className="w-full h-40 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={function() {
+                      const ok = processPantryImport(pasteText, "paste");
+                      if (ok) {
+                        setShowPaste(false);
+                        setPasteText("");
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg bg-stone-700 text-white font-medium text-sm"
+                  >
+                    Parse & import
+                  </button>
+                  <button
+                    onClick={function() { setShowPaste(false); setPasteText(""); }}
+                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -762,6 +828,8 @@
       const [voiceState, setVoiceState] = useState("idle"); // idle, listening, transcript
       const [transcript, setTranscript] = useState("");
       const [longPressItem, setLongPressItem] = useState(null);
+      const [showPaste, setShowPaste] = useState(false);
+      const [pasteText, setPasteText] = useState("");
       const recognitionRef = useRef(null);
       const longPressTimerRef = useRef(null);
 
@@ -985,58 +1053,66 @@
         else if (choice === "delete") deleteList(listId);
       }
 
+      function processShoppingImport(rawText) {
+        try {
+          const data = JSON.parse(rawText);
+          const incoming = Array.isArray(data) ? data : data.items;
+          if (!Array.isArray(incoming)) {
+            setImportMessage("Invalid format - expected JSON array");
+            setTimeout(function() { setImportMessage(""); }, 4000);
+            return false;
+          }
+          let added = 0;
+          let merged = 0;
+          updateActiveList(function(listItems) {
+            const list = listItems.slice();
+            let id = nextId(list);
+            incoming.forEach(function(row) {
+              if (!row.name) return;
+              const existing = list.find(function(s) {
+                return s.name.toLowerCase().trim() === row.name.toLowerCase().trim();
+              });
+              if (existing) {
+                existing.qty = existing.qty + (row.qty || 1);
+                merged = merged + 1;
+              } else {
+                list.push({
+                  id: id,
+                  name: row.name,
+                  qty: row.qty || 1,
+                  fromStaple: false,
+                  suggestedCategory: row.category || "",
+                  suggestedUnit: row.unit || ""
+                });
+                id = id + 1;
+                added = added + 1;
+              }
+            });
+            return list;
+          });
+          if (isMain) {
+            let newHistory = history.slice();
+            incoming.forEach(function(row) {
+              if (row.name) newHistory = recordHistory(newHistory, row.name, row.category, row.unit);
+            });
+            setHistory(newHistory);
+          }
+          setImportMessage("Imported: " + added + " new, " + merged + " merged");
+          setTimeout(function() { setImportMessage(""); }, 4000);
+          return true;
+        } catch (err) {
+          setImportMessage("Could not parse - check the JSON is valid");
+          setTimeout(function() { setImportMessage(""); }, 4000);
+          return false;
+        }
+      }
+
       function handleImport(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-          try {
-            const data = JSON.parse(e.target.result);
-            const incoming = Array.isArray(data) ? data : data.items;
-            if (!Array.isArray(incoming)) {
-              setImportMessage("Invalid file format");
-              return;
-            }
-            let added = 0;
-            let merged = 0;
-            updateActiveList(function(listItems) {
-              const list = listItems.slice();
-              let id = nextId(list);
-              incoming.forEach(function(row) {
-                if (!row.name) return;
-                const existing = list.find(function(s) {
-                  return s.name.toLowerCase().trim() === row.name.toLowerCase().trim();
-                });
-                if (existing) {
-                  existing.qty = existing.qty + (row.qty || 1);
-                  merged = merged + 1;
-                } else {
-                  list.push({
-                    id: id,
-                    name: row.name,
-                    qty: row.qty || 1,
-                    fromStaple: false,
-                    suggestedCategory: row.category || "",
-                    suggestedUnit: row.unit || ""
-                  });
-                  id = id + 1;
-                  added = added + 1;
-                }
-              });
-              return list;
-            });
-            if (isMain) {
-              let newHistory = history.slice();
-              incoming.forEach(function(row) {
-                if (row.name) newHistory = recordHistory(newHistory, row.name, row.category, row.unit);
-              });
-              setHistory(newHistory);
-            }
-            setImportMessage("Imported: " + added + " new, " + merged + " merged");
-            setTimeout(function() { setImportMessage(""); }, 4000);
-          } catch (err) {
-            setImportMessage("Could not read file");
-          }
+          processShoppingImport(e.target.result);
         };
         reader.readAsText(file);
         event.target.value = "";
@@ -1256,6 +1332,19 @@
                 📥 Import
                 <input type="file" accept=".json,application/json" onChange={handleImport} style={{display:"none"}} />
               </label>
+              <button
+                onClick={function() {
+                  setShowPaste(true);
+                  if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(function(text) {
+                      if (text) setPasteText(text);
+                    }).catch(function() {});
+                  }
+                }}
+                className="flex-1 px-3 py-2 rounded-lg bg-stone-700 text-white font-medium text-sm"
+              >
+                📋 Paste
+              </button>
               {voiceSupported && (
                 <button
                   onClick={voiceState === "listening" ? stopVoice : startVoice}
@@ -1425,6 +1514,46 @@
                 <button onClick={clearList} className="text-sm text-gray-500 underline">
                   Clear {activeList.name} list
                 </button>
+              </div>
+            </div>
+          )}
+
+          {showPaste && (
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+              onClick={function() { setShowPaste(false); setPasteText(""); }}
+            >
+              <div
+                className="bg-white rounded-2xl w-full max-w-2xl p-4 space-y-3"
+                onClick={function(e) { e.stopPropagation(); }}
+              >
+                <div className="font-medium text-gray-900">Paste JSON</div>
+                <textarea
+                  value={pasteText}
+                  onChange={function(e) { setPasteText(e.target.value); }}
+                  placeholder='[{"name":"...","qty":1,"unit":"","category":""}]'
+                  className="w-full h-40 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={function() {
+                      const ok = processShoppingImport(pasteText);
+                      if (ok) {
+                        setShowPaste(false);
+                        setPasteText("");
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg bg-stone-700 text-white font-medium text-sm"
+                  >
+                    Parse & import
+                  </button>
+                  <button
+                    onClick={function() { setShowPaste(false); setPasteText(""); }}
+                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
