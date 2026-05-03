@@ -1498,15 +1498,19 @@
                           className="w-7 h-7 flex items-center justify-center text-gray-600 font-bold"
                         >+</button>
                       </div>
-                      <button
-                        onClick={function() { moveToPantry(s.id); }}
-                        className="w-12 h-12 rounded-xl bg-green-700 text-white flex items-center justify-center font-bold text-xl shadow-sm"
-                        title="Bought"
-                      >✓</button>
+                      {!itemIsAlwaysBuy && (
+                        <button
+                          onClick={function() { moveToPantry(s.id); }}
+                          className="w-12 h-12 rounded-xl bg-green-700 text-white flex items-center justify-center font-bold text-xl shadow-sm"
+                          title="Bought"
+                        >✓</button>
+                      )}
                       <button
                         onClick={function() { removeFromList(s.id); }}
-                        className="w-7 h-7 flex items-center justify-center text-gray-400 text-sm"
-                        title="Remove"
+                        className={itemIsAlwaysBuy
+                          ? "w-12 h-12 rounded-xl bg-stone-100 text-stone-500 flex items-center justify-center text-lg border border-stone-200"
+                          : "w-7 h-7 flex items-center justify-center text-gray-400 text-sm"}
+                        title={itemIsAlwaysBuy ? "Got it (remove from this trip)" : "Remove"}
                       >🗑</button>
                     </div>
                   );
