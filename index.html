@@ -1287,197 +1287,208 @@
 
       return (
         <div>
-          {/* List pills */}
-          <div className="bg-white rounded-2xl shadow-sm p-3 mb-4 border border-stone-200">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {lists.map(function(l) {
-                return (
-                  <button
-                    key={l.id}
-                    onClick={function() { setActiveListId(l.id); }}
-                    onContextMenu={function(e) {
-                      e.preventDefault();
-                      handleListPillLongPress(l.id);
-                    }}
-                    onTouchStart={function() {
-                      longPressTimerRef.current = setTimeout(function() {
-                        handleListPillLongPress(l.id);
-                      }, 600);
-                    }}
-                    onTouchEnd={cancelLongPress}
-                    onTouchMove={cancelLongPress}
-                    className={l.id === activeListId
-                      ? "px-4 py-2 rounded-xl bg-green-700 text-white font-medium text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1.5"
-                      : "px-4 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 font-medium text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1.5"}
-                  >
-                    {l.isMain && <span className={l.id === activeListId ? "text-yellow-300" : "text-stone-400"}>★</span>}
-                    {l.name}
-                  </button>
-                );
-              })}
-              <button
-                onClick={createNewList}
-                className="px-4 py-2 rounded-xl bg-white text-stone-400 border-2 border-dashed border-stone-300 font-medium text-sm flex-shrink-0"
-              >
-                +
-              </button>
-            </div>
-          </div>
+          {/* Single combined card: pills + add + quick-add + list */}
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
 
-          {/* Add input + buttons */}
-          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 border border-stone-200">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Add item..."
-                value={input}
-                onChange={function(e) { setInput(e.target.value); }}
-                onKeyDown={function(e) { if (e.key === "Enter") submitInput(); }}
-                className="flex-1 px-3 py-3 border border-stone-200 rounded-xl"
-              />
-              <button
-                onClick={submitInput}
-                className="px-6 py-3 rounded-xl bg-green-700 text-white font-medium text-sm"
-              >
-                Add
-              </button>
-            </div>
-
-            <div className="flex gap-2 mt-2">
-              <label className="flex-1 px-3 py-3 rounded-xl bg-green-50 text-green-900 font-medium text-sm text-center border border-green-200">
-                📥 Import
-                <input type="file" accept=".json,application/json" onChange={handleImport} style={{display:"none"}} />
-              </label>
-              <button
-                onClick={function() {
-                  setShowPaste(true);
-                  if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText().then(function(text) {
-                      if (text) setPasteText(text);
-                    }).catch(function() {});
-                  }
-                }}
-                className="flex-1 px-3 py-3 rounded-xl bg-stone-100 text-stone-700 font-medium text-sm border border-stone-200"
-              >
-                📋 Paste
-              </button>
-              {voiceSupported && (
-                <button
-                  onClick={voiceState === "listening" ? stopVoice : startVoice}
-                  className={voiceState === "listening"
-                    ? "flex-1 px-3 py-3 rounded-xl pulse-red text-white font-medium text-sm"
-                    : "flex-1 px-3 py-3 rounded-xl bg-green-700 text-white font-medium text-sm"}
-                >
-                  🎤 {voiceState === "listening" ? "Stop" : "Voice"}
-                </button>
-              )}
-              <AIHelper />
-            </div>
-
-            {voiceState === "transcript" && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
-                <div className="text-sm text-green-900">
-                  <span className="font-medium">Heard:</span> "{transcript}"
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={commitTranscript}
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-green-700 text-white text-sm font-medium"
-                  >
-                    Add all
-                  </button>
-                  <button
-                    onClick={cancelTranscript}
-                    className="px-3 py-1.5 rounded-lg bg-white text-gray-700 border border-gray-200 text-sm font-medium"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {importMessage && (
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900">
-                {importMessage}
-              </div>
-            )}
-
-            {suggestions.length > 0 && (
-              <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden bg-white">
-                {suggestions.map(function(s) {
+            {/* Section: list pills */}
+            <div className="p-3">
+              <div className="flex gap-2 overflow-x-auto">
+                {lists.map(function(l) {
                   return (
                     <button
-                      key={s.key}
-                      onClick={function() {
-                        addToList(s.name, s.lastCategory, s.lastUnit);
-                        setInput("");
+                      key={l.id}
+                      onClick={function() { setActiveListId(l.id); }}
+                      onContextMenu={function(e) {
+                        e.preventDefault();
+                        handleListPillLongPress(l.id);
                       }}
-                      className="w-full text-left px-3 py-2 border-b border-gray-100 last:border-b-0 text-sm flex items-center justify-between"
+                      onTouchStart={function() {
+                        longPressTimerRef.current = setTimeout(function() {
+                          handleListPillLongPress(l.id);
+                        }, 600);
+                      }}
+                      onTouchEnd={cancelLongPress}
+                      onTouchMove={cancelLongPress}
+                      className={l.id === activeListId
+                        ? "px-3 py-1.5 rounded-lg bg-green-700 text-white font-medium text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1.5"
+                        : "px-3 py-1.5 rounded-lg bg-white text-stone-700 border border-stone-200 font-medium text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1.5"}
                     >
-                      <span>{s.name}</span>
-                      <span className="text-xs text-gray-400">×{s.addCount}</span>
+                      {l.isMain && <span className={l.id === activeListId ? "text-yellow-300" : "text-stone-400"}>★</span>}
+                      {l.name}
                     </button>
                   );
                 })}
+                <button
+                  onClick={createNewList}
+                  className="px-3 py-1.5 rounded-lg bg-white text-stone-400 border-2 border-dashed border-stone-300 font-medium text-sm flex-shrink-0"
+                >
+                  +
+                </button>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Quick-add grid (collapsible, main list only) */}
-          {showGrid && gridCandidates.length > 0 && (
-            <div className="mb-4">
-              <button
-                onClick={function() { setGridExpanded(!gridExpanded); }}
-                className="w-full px-4 py-3 rounded-2xl bg-green-50 border border-green-200 shadow-sm flex items-center justify-between"
-              >
-                <span className="font-medium text-stone-800 flex items-center gap-2">
-                  <span className="text-xl text-yellow-500">✨</span>
-                  Quick add
-                  <span className="text-sm text-stone-500 font-normal">
-                    {input.trim() ? "(" + gridFiltered.length + " matches)" : "(" + gridCandidates.length + ")"}
-                  </span>
-                </span>
-                <span className="text-stone-500">{effectiveExpanded ? "▲" : "▼"}</span>
-              </button>
-              {effectiveExpanded && (
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {gridDisplay.map(function(h) {
-                    const catColor = categoryColors[h.lastCategory] || "bg-gray-100 text-gray-800";
+            <div className="border-t border-stone-100"></div>
+
+            {/* Section: add input + buttons */}
+            <div className="p-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Add item..."
+                  value={input}
+                  onChange={function(e) { setInput(e.target.value); }}
+                  onKeyDown={function(e) { if (e.key === "Enter") submitInput(); }}
+                  className="flex-1 px-3 py-2 border border-stone-200 rounded-lg"
+                />
+                <button
+                  onClick={submitInput}
+                  className="px-4 py-2 rounded-lg bg-green-700 text-white font-medium text-sm"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="flex gap-1.5 mt-2">
+                <label className="flex-1 px-2 py-2 rounded-lg bg-green-50 text-green-900 font-medium text-sm text-center border border-green-200">
+                  📥 Import
+                  <input type="file" accept=".json,application/json" onChange={handleImport} style={{display:"none"}} />
+                </label>
+                <button
+                  onClick={function() {
+                    setShowPaste(true);
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                      navigator.clipboard.readText().then(function(text) {
+                        if (text) setPasteText(text);
+                      }).catch(function() {});
+                    }
+                  }}
+                  className="flex-1 px-2 py-2 rounded-lg bg-stone-100 text-stone-700 font-medium text-sm border border-stone-200"
+                >
+                  📋 Paste
+                </button>
+                {voiceSupported && (
+                  <button
+                    onClick={voiceState === "listening" ? stopVoice : startVoice}
+                    className={voiceState === "listening"
+                      ? "flex-1 px-2 py-2 rounded-lg pulse-red text-white font-medium text-sm"
+                      : "flex-1 px-2 py-2 rounded-lg bg-green-700 text-white font-medium text-sm"}
+                  >
+                    🎤 {voiceState === "listening" ? "Stop" : "Voice"}
+                  </button>
+                )}
+                <AIHelper />
+              </div>
+
+              {voiceState === "transcript" && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg space-y-2">
+                  <div className="text-sm text-green-900">
+                    <span className="font-medium">Heard:</span> "{transcript}"
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={commitTranscript}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-green-700 text-white text-sm font-medium"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      onClick={cancelTranscript}
+                      className="px-3 py-1.5 rounded-lg bg-white text-gray-700 border border-gray-200 text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {importMessage && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-900">
+                  {importMessage}
+                </div>
+              )}
+
+              {suggestions.length > 0 && (
+                <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  {suggestions.map(function(s) {
                     return (
                       <button
-                        key={h.key}
-                        onClick={function() { addToList(h.name, h.lastCategory, h.lastUnit); }}
-                        className={catColor + " rounded-xl p-3 text-sm font-medium shadow-sm border border-white/50 active:scale-95 transition-transform"}
+                        key={s.key}
+                        onClick={function() {
+                          addToList(s.name, s.lastCategory, s.lastUnit);
+                          setInput("");
+                        }}
+                        className="w-full text-left px-3 py-2 border-b border-gray-100 last:border-b-0 text-sm flex items-center justify-between"
                       >
-                        {h.name}
+                        <span>{s.name}</span>
+                        <span className="text-xs text-gray-400">×{s.addCount}</span>
                       </button>
                     );
                   })}
                 </div>
               )}
             </div>
-          )}
 
-          {/* Shopping list items */}
-          {!activeList || activeList.items.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center text-gray-500 border border-dashed border-gray-300">
-              <div className="text-4xl mb-2">🛒</div>
-              <p className="font-medium text-gray-700 mb-1">{activeList ? activeList.name : "List"} is empty</p>
-              <p className="text-sm">
-                {isMain ? "Add items above, mark pantry items as staples (⭐), or use 🛒 from the pantry" : "Add items above"}
-              </p>
-            </div>
-          ) : (
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-gray-800 mb-2 px-1 flex items-center gap-2">
-                <span className="text-xl">🛒</span>
-                {activeList.name}
-                <span className="text-sm text-gray-400 font-normal">({activeList.items.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {sortedItems.map(function(s) {
-                  const itemIsAlwaysBuy = s.fromAlwaysBuy || (isMain && isAlwaysBuy(s.name));
-                  return (
+            {/* Section: quick-add (collapsible, main list only) */}
+            {showGrid && gridCandidates.length > 0 && (
+              <React.Fragment>
+                <div className="border-t border-stone-100"></div>
+                <div className="p-3">
+                  <button
+                    onClick={function() { setGridExpanded(!gridExpanded); }}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <span className="font-medium text-stone-800 flex items-center gap-2 text-sm">
+                      <span className="text-base text-yellow-500">✨</span>
+                      Quick add
+                      <span className="text-xs text-stone-500 font-normal">
+                        {input.trim() ? "(" + gridFiltered.length + " matches)" : "(" + gridCandidates.length + ")"}
+                      </span>
+                    </span>
+                    <span className="text-stone-500 text-xs">{effectiveExpanded ? "▲" : "▼"}</span>
+                  </button>
+                  {effectiveExpanded && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {gridDisplay.map(function(h) {
+                        const catColor = categoryColors[h.lastCategory] || "bg-gray-100 text-gray-800";
+                        return (
+                          <button
+                            key={h.key}
+                            onClick={function() { addToList(h.name, h.lastCategory, h.lastUnit); }}
+                            className={catColor + " rounded-lg p-2 text-sm font-medium border border-white/50 active:scale-95 transition-transform"}
+                          >
+                            {h.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            )}
+
+            <div className="border-t border-stone-100"></div>
+
+            {/* Section: list items */}
+            <div className="p-3">
+              {!activeList || activeList.items.length === 0 ? (
+                <div className="text-center text-gray-500 py-6">
+                  <div className="text-3xl mb-1">🛒</div>
+                  <p className="font-medium text-gray-700 text-sm mb-1">{activeList ? activeList.name : "List"} is empty</p>
+                  <p className="text-xs">
+                    {isMain ? "Add items above, mark pantry items as staples (⭐), or use 🛒 from the pantry" : "Add items above"}
+                  </p>
+                </div>
+              ) : (
+                <React.Fragment>
+                  <h2 className="text-base font-bold text-gray-800 mb-2 px-1 flex items-center gap-2">
+                    <span className="text-base">🛒</span>
+                    {activeList.name}
+                    <span className="text-sm text-gray-400 font-normal">({activeList.items.length})</span>
+                  </h2>
+                  <div className="space-y-2">
+                    {sortedItems.map(function(s) {
+                      const itemIsAlwaysBuy = s.fromAlwaysBuy || (isMain && isAlwaysBuy(s.name));
+                      return (
                     <div
                       key={s.id}
                       onContextMenu={function(e) {
@@ -1487,7 +1498,7 @@
                       onTouchStart={function() { if (isMain) startLongPress(s.id); }}
                       onTouchEnd={cancelLongPress}
                       onTouchMove={cancelLongPress}
-                      className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex items-center gap-2"
+                      className="bg-stone-50 rounded-lg border border-stone-100 p-2.5 flex items-center gap-2"
                     >
                       {itemIsAlwaysBuy && (
                         <span className="text-lg" title="Always-buy item">📌</span>
@@ -1527,12 +1538,16 @@
                   );
                 })}
               </div>
+                </React.Fragment>
+              )}
+            </div>
+          </div>
 
-              <div className="mt-6 flex justify-center">
-                <button onClick={clearList} className="text-sm text-gray-500 underline">
-                  Clear {activeList.name} list
-                </button>
-              </div>
+          {activeList && activeList.items.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <button onClick={clearList} className="text-sm text-gray-500 underline">
+                Clear {activeList.name} list
+              </button>
             </div>
           )}
 
