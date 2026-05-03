@@ -1,4 +1,4 @@
-const CACHE = 'spiskammer-v9';
+const CACHE = 'spiskammer-v10';
 const ASSETS = [
   './',
   './index.html',
