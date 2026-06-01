@@ -80,6 +80,14 @@
       return ids.length ? Math.max.apply(null, ids) + 1 : 1;
     }
 
+    function splitShoppingInputLines(text) {
+      return String(text || "")
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map(function(line) { return line.trim(); })
+        .filter(Boolean);
+    }
+
     function recordHistory(history, name, category, unit) {
       const key = name.toLowerCase().trim();
       const existing = history.find(function(h) { return h.key === key; });
@@ -195,11 +203,13 @@
       const activeList = lists.find(function(l) { return l.id === activeListId; }) || lists[0];
 
       function updateActiveList(updater) {
-        setLists(lists.map(function(l) {
-          if (l.id !== activeListId) return l;
-          const updatedItems = updater(l.items);
-          return Object.assign({}, l, { items: updatedItems });
-        }));
+        setLists(function(currentLists) {
+          return currentLists.map(function(l) {
+            if (l.id !== activeListId) return l;
+            const updatedItems = updater(l.items);
+            return Object.assign({}, l, { items: updatedItems });
+          });
+        });
       }
 
       function updateMainList(updater) {
@@ -898,15 +908,20 @@
           }]);
         });
         if (isMain) {
-          setHistory(recordHistory(history, name, category, unit));
+          setHistory(function(currentHistory) {
+            return recordHistory(currentHistory.slice ? currentHistory.slice() : currentHistory, name, category, unit);
+          });
         }
       }
 
       function submitInput() {
         if (!input.trim()) return;
-        const key = input.toLowerCase().trim();
-        const hit = history.find(function(h) { return h.key === key; });
-        addToList(input.trim(), hit ? hit.lastCategory : "", hit ? hit.lastUnit : "");
+        const lines = splitShoppingInputLines(input);
+        lines.forEach(function(line) {
+          const key = line.toLowerCase().trim();
+          const hit = history.find(function(h) { return h.key === key; });
+          addToList(line, hit ? hit.lastCategory : "", hit ? hit.lastUnit : "");
+        });
         setInput("");
       }
 
@@ -1332,14 +1347,19 @@
             {/* Section: add input + buttons */}
             <div className="p-3">
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add item..."
+                <textarea
+                  rows="2"
+                  placeholder="Add item... one per line"
                   value={input}
                   onChange={function(e) { setInput(e.target.value); }}
-                  onKeyDown={function(e) { if (e.key === "Enter") submitInput(); }}
-                  className="flex-1 px-3 py-2 border border-stone-200 rounded-lg"
-                />
+                  onKeyDown={function(e) {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      submitInput();
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 border border-stone-200 rounded-lg min-h-[42px] resize-y"
+                ></textarea>
                 <button
                   onClick={submitInput}
                   className="px-4 py-2 rounded-lg bg-green-700 text-white font-medium text-sm"

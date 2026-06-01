@@ -1,7 +1,8 @@
-const CACHE = 'spiskammer-v11';
+const CACHE = 'spiskammer-v12';
 const ASSETS = [
   './',
   './index.html',
+  './src/spiskammer-utils.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
