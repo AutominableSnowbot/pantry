@@ -855,11 +855,13 @@
       const [longPressItem, setLongPressItem] = useState(null);
       const [editingItemId, setEditingItemId] = useState(null);
       const [editingItemName, setEditingItemName] = useState("");
+      const [expandedItemNames, setExpandedItemNames] = useState({});
       const [showPaste, setShowPaste] = useState(false);
       const [pasteText, setPasteText] = useState("");
       const recognitionRef = useRef(null);
       const longPressTimerRef = useRef(null);
       const editNameTimerRef = useRef(null);
+      const editNameLongPressFiredRef = useRef(false);
 
       const isMain = activeList && activeList.isMain;
       const voiceSupported = typeof window !== "undefined" &&
@@ -1259,7 +1261,9 @@
 
       function startNameEditLongPress(item) {
         cancelLongPress();
+        editNameLongPressFiredRef.current = false;
         editNameTimerRef.current = setTimeout(function() {
+          editNameLongPressFiredRef.current = true;
           startEditingItemName(item);
         }, 600);
       }
@@ -1269,6 +1273,23 @@
           clearTimeout(editNameTimerRef.current);
           editNameTimerRef.current = null;
         }
+      }
+
+      function toggleItemNameExpanded(itemId) {
+        setExpandedItemNames(function(current) {
+          const next = Object.assign({}, current);
+          next[itemId] = !next[itemId];
+          return next;
+        });
+      }
+
+      function handleItemNameClick(itemId) {
+        if (editNameLongPressFiredRef.current) {
+          editNameLongPressFiredRef.current = false;
+          return;
+        }
+        if (editingItemId === itemId) return;
+        toggleItemNameExpanded(itemId);
       }
 
       function commitEditingItemName() {
@@ -1555,6 +1576,7 @@
                   <div className="space-y-2">
                     {sortedItems.map(function(s) {
                       const itemIsAlwaysBuy = s.fromAlwaysBuy || (isMain && isAlwaysBuy(s.name));
+                      const itemNameExpanded = !!expandedItemNames[s.id];
                       return (
                     <div
                       key={s.id}
@@ -1574,7 +1596,11 @@
                         <span className="text-amber-500 text-lg" title="From staples">⭐</span>
                       )}
                       <div
-                        className="flex-1 min-w-0"
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={function(e) {
+                          e.stopPropagation();
+                          handleItemNameClick(s.id);
+                        }}
                         onContextMenu={function(e) {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1587,7 +1613,7 @@
                         onTouchEnd={cancelNameEditLongPress}
                         onTouchMove={cancelNameEditLongPress}
                         onMouseDown={function(e) { e.stopPropagation(); }}
-                        title="Long-press name to edit"
+                        title="Tap name to show full text. Long-press to edit."
                       >
                         {editingItemId === s.id ? (
                           <input
@@ -1610,7 +1636,9 @@
                             className="w-full px-2 py-1 rounded-md border border-green-300 bg-white font-medium text-gray-900 outline-none ring-2 ring-green-100"
                           />
                         ) : (
-                          <div className="font-medium text-gray-900 truncate">{s.name}</div>
+                          <div className={itemNameExpanded
+                            ? "font-medium text-gray-900 whitespace-normal break-words leading-snug"
+                            : "font-medium text-gray-900 truncate"}>{s.name}</div>
                         )}
                       </div>
                       <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
