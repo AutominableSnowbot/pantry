@@ -853,10 +853,13 @@
       const [voiceState, setVoiceState] = useState("idle"); // idle, listening, transcript
       const [transcript, setTranscript] = useState("");
       const [longPressItem, setLongPressItem] = useState(null);
+      const [editingItemId, setEditingItemId] = useState(null);
+      const [editingItemName, setEditingItemName] = useState("");
       const [showPaste, setShowPaste] = useState(false);
       const [pasteText, setPasteText] = useState("");
       const recognitionRef = useRef(null);
       const longPressTimerRef = useRef(null);
+      const editNameTimerRef = useRef(null);
 
       const isMain = activeList && activeList.isMain;
       const voiceSupported = typeof window !== "undefined" &&
@@ -1246,6 +1249,50 @@
         }
       }
 
+      function startEditingItemName(item) {
+        cancelLongPress();
+        cancelNameEditLongPress();
+        setLongPressItem(null);
+        setEditingItemId(item.id);
+        setEditingItemName(item.name);
+      }
+
+      function startNameEditLongPress(item) {
+        cancelLongPress();
+        editNameTimerRef.current = setTimeout(function() {
+          startEditingItemName(item);
+        }, 600);
+      }
+
+      function cancelNameEditLongPress() {
+        if (editNameTimerRef.current) {
+          clearTimeout(editNameTimerRef.current);
+          editNameTimerRef.current = null;
+        }
+      }
+
+      function commitEditingItemName() {
+        if (editingItemId === null) return;
+        const newName = editingItemName.trim();
+        if (!newName) {
+          setEditingItemId(null);
+          setEditingItemName("");
+          return;
+        }
+        updateActiveList(function(listItems) {
+          return listItems.map(function(s) {
+            return s.id === editingItemId ? Object.assign({}, s, { name: newName }) : s;
+          });
+        });
+        setEditingItemId(null);
+        setEditingItemName("");
+      }
+
+      function cancelEditingItemName() {
+        setEditingItemId(null);
+        setEditingItemName("");
+      }
+
       function toggleAlwaysBuy(itemName, category, unit) {
         const nameKey = itemName.toLowerCase().trim();
         const existing = alwaysBuy.find(function(ab) { return ab.name.toLowerCase().trim() === nameKey; });
@@ -1526,8 +1573,45 @@
                       {s.fromStaple && !itemIsAlwaysBuy && (
                         <span className="text-amber-500 text-lg" title="From staples">⭐</span>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900">{s.name}</div>
+                      <div
+                        className="flex-1 min-w-0"
+                        onContextMenu={function(e) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          startEditingItemName(s);
+                        }}
+                        onTouchStart={function(e) {
+                          e.stopPropagation();
+                          startNameEditLongPress(s);
+                        }}
+                        onTouchEnd={cancelNameEditLongPress}
+                        onTouchMove={cancelNameEditLongPress}
+                        onMouseDown={function(e) { e.stopPropagation(); }}
+                        title="Long-press name to edit"
+                      >
+                        {editingItemId === s.id ? (
+                          <input
+                            type="text"
+                            value={editingItemName}
+                            autoFocus
+                            onChange={function(e) { setEditingItemName(e.target.value); }}
+                            onBlur={commitEditingItemName}
+                            onKeyDown={function(e) {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitEditingItemName();
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelEditingItemName();
+                              }
+                            }}
+                            onClick={function(e) { e.stopPropagation(); }}
+                            className="w-full px-2 py-1 rounded-md border border-green-300 bg-white font-medium text-gray-900 outline-none ring-2 ring-green-100"
+                          />
+                        ) : (
+                          <div className="font-medium text-gray-900 truncate">{s.name}</div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
                         <button
