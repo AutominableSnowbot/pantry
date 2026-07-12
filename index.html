@@ -1016,6 +1016,16 @@
         });
       }
 
+      function setListQty(id, qty) {
+        const value = parseInt(qty, 10);
+        if (!value || value < 1) return;
+        updateActiveList(function(listItems) {
+          return listItems.map(function(s) {
+            return s.id === id ? Object.assign({}, s, { qty: value }) : s;
+          });
+        });
+      }
+
       function clearList() {
         if (!activeList || activeList.items.length === 0) return;
         if (confirm("Clear the " + activeList.name + " list?")) {
@@ -1596,7 +1606,7 @@
                         <span className="text-amber-500 text-lg" title="From staples">⭐</span>
                       )}
                       <div
-                        className="flex-[1_1_70%] min-w-0 cursor-pointer"
+                        className="flex-[1_1_60%] min-w-0 cursor-pointer"
                         onClick={function(e) {
                           e.stopPropagation();
                           handleItemNameClick(s.id);
@@ -1639,30 +1649,33 @@
                           <div className="font-medium text-gray-900 whitespace-normal break-words leading-snug">{s.name}</div>
                         )}
                       </div>
-                      <div className="flex-[0_0_30%] max-w-[30%] flex items-center justify-end gap-1">
-                        <div className="flex items-center bg-gray-50 rounded-lg p-0.5 min-w-0">
-                          <button
-                            onClick={function() { adjustListQty(s.id, -1); }}
-                            className="w-5 h-7 flex items-center justify-center text-gray-600 font-bold text-sm"
-                          >−</button>
-                          <span className="w-5 text-center font-bold text-gray-900 text-xs">{s.qty}</span>
-                          <button
-                            onClick={function() { adjustListQty(s.id, 1); }}
-                            className="w-5 h-7 flex items-center justify-center text-gray-600 font-bold text-sm"
-                          >+</button>
-                        </div>
+                      <div className="flex-[0_0_40%] max-w-[40%] flex items-center justify-end gap-1.5">
+                        <select
+                          value={s.qty}
+                          onChange={function(e) { setListQty(s.id, e.target.value); }}
+                          onClick={function(e) { e.stopPropagation(); }}
+                          className="h-8 w-12 rounded-lg border border-stone-200 bg-white text-center text-sm font-bold text-gray-900 shadow-sm"
+                          title="Quantity"
+                        >
+                          {[1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,40,50].map(function(n) {
+                            return <option key={n} value={n}>{n}</option>;
+                          })}
+                          {([1,2,3,4,5,6,7,8,9,10,12,15,20,25,30,40,50].indexOf(s.qty) === -1) && (
+                            <option value={s.qty}>{s.qty}</option>
+                          )}
+                        </select>
                         {!itemIsAlwaysBuy && (
                           <button
                             onClick={function() { moveToPantry(s.id); }}
-                            className="w-7 h-7 rounded-lg bg-green-700 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0"
+                            className="w-8 h-8 rounded-lg bg-green-700 text-white flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0"
                             title="Bought"
                           >✓</button>
                         )}
                         <button
                           onClick={function() { removeFromList(s.id); }}
                           className={itemIsAlwaysBuy
-                            ? "w-7 h-7 rounded-lg bg-stone-100 text-stone-500 flex items-center justify-center text-sm border border-stone-200 flex-shrink-0"
-                            : "w-7 h-7 flex items-center justify-center text-gray-400 text-sm flex-shrink-0"}
+                            ? "w-8 h-8 rounded-lg bg-stone-100 text-stone-500 flex items-center justify-center text-base border border-stone-200 flex-shrink-0"
+                            : "w-8 h-8 flex items-center justify-center text-gray-400 text-base flex-shrink-0"}
                           title={itemIsAlwaysBuy ? "Got it (remove from this trip)" : "Remove"}
                         >🗑</button>
                       </div>
